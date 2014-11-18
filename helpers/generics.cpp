@@ -1,6 +1,9 @@
 #include "generics.h"
+#include "translation.h"
 #include <iostream>
 #include <sstream>
+#include <algorithm>
+#include <math.h>
 
 void ReverseComplement(string input, string& output)
 {
@@ -209,7 +212,6 @@ string NumberToPattern(int number, int length)
     return output;
 }
 
-
 int FillFrequencies(string text, int k, vector<int>& frequencies)
 {
     int maxCount = 0;
@@ -224,4 +226,308 @@ int FillFrequencies(string text, int k, vector<int>& frequencies)
 
     }
     return maxCount;
+}
+
+int PopulateSkew(string sequence, int length, vector<int>& skews, bool min)
+{
+    skews.push_back(0);
+    int count = 0;
+    int minCount = 9999;
+    if( min )
+    {
+        for(int i=0; i<length; ++i)
+        {
+            //cout << sequence[i] << " ";
+            switch(sequence[i])
+            {
+                case 'A' :
+                    break;
+                case 'T':
+                    break;
+                case 'G':
+                    ++count;
+                    break;
+                case 'C' :
+                    --count;
+                    break;
+                default :
+                    cout << "PopulateSkew(): not ACTG" << endl;
+                    throw 1;
+            }
+            skews.push_back(count);
+            if( count < minCount )
+            {
+                minCount = count;
+            }
+        }
+        return minCount;
+    }
+    else
+    {
+        cout  << "ELLLEOE?" << endl;
+        int maxCount = -9999;
+        for(int i=0; i<length; ++i)
+        {
+            switch(sequence[i])
+            {
+                case 'A' :
+                    break;
+                case 'T':
+                    break;
+                case 'G':
+                    ++count;
+                    break;
+                case 'C' :
+                    --count;
+                    break;
+            }
+            //cout << i << " " << count << endl;
+            if( count > maxCount )
+            {
+                maxCount = count;
+                cout << i << endl;
+            }
+            skews.push_back(count);
+        }
+        return maxCount;
+    }
+}
+
+int HammingDistance(string a, string b)
+{
+    if( a.length() != b.length())
+    {
+        cout << a << " | " << b << endl;
+        cout << "Hamming distance input lengths don't match" << endl;
+        throw 1;
+    }
+    int distance = 0;
+    for( int i=0; i<a.length(); ++i)
+    {
+        if(a[i] != b[i])
+            ++distance;
+    }
+    return distance;
+}
+
+const vector<int> ApproxMatches(string genome, string pattern, int mismatches)
+{
+    vector<int> locations;
+    int patternLength = pattern.length();
+    int length = genome.length();
+    for( int i=0; i < length-patternLength+1; ++i )
+    {
+        string ref = genome.substr(i,patternLength);
+        int dist = HammingDistance(ref, pattern);
+        if( dist <= mismatches )
+        {
+            locations.push_back(i);
+        }
+    }
+    return locations;
+}
+
+const vector<int> GetSpectrum2(const vector<int>& peptide, bool cyclic)
+{
+    vector<int> prefix_mass;
+    prefix_mass.push_back(0);
+
+    vector<int>::const_iterator it;
+    int i = 0;
+    for( it=peptide.begin(); it != peptide.end(); ++it )
+    {
+        prefix_mass.push_back( prefix_mass[i++] + *it );
+    }
+
+    int peptide_length = peptide.size();
+    int peptide_mass = prefix_mass[peptide_length];
+    
+    vector<int> spectrum;
+    int len = prefix_mass.size(); //peptide.length+1
+    for( int i=0; i<len-1; ++i )
+    {
+        for( int j=i+1; j < len; ++j)
+        {
+            int diff = prefix_mass[j] - prefix_mass[i];
+            spectrum.push_back(diff);
+            if( cyclic && i > 0 && j < len-1 )
+            {
+                spectrum.push_back( peptide_mass - diff );
+            }
+        }
+    }
+   
+    spectrum.push_back(0); 
+    std::sort(spectrum.begin(), spectrum.end());
+    return spectrum;
+}
+
+const vector<int> GetSpectrum(string peptide, bool cyclic)
+{
+    vector<int> prefix_mass;
+    prefix_mass.push_back(0);
+    
+    for(int i=0; i < peptide.length(); ++i)
+    {
+        char aa = peptide[i];
+        int mass = AminoAcids::acid_weights.at(aa);
+        int cum_mass = prefix_mass[i] + mass;
+        prefix_mass.push_back( cum_mass );
+    }
+
+    int peptide_mass = prefix_mass[peptide.length()];
+    
+    vector<int> spectrum;
+    int len = prefix_mass.size(); //peptide.length+1
+    for( int i=0; i<len-1; ++i )
+    {
+        for( int j=i+1; j < len; ++j)
+        {
+            int diff = prefix_mass[j] - prefix_mass[i];
+            spectrum.push_back(diff);
+            if( cyclic && i > 0 && j < len-1 )
+            {
+                spectrum.push_back( peptide_mass - diff );
+            }
+        }
+    }
+   
+    spectrum.push_back(0); 
+    std::sort(spectrum.begin(), spectrum.end());
+    return spectrum;
+}
+
+int Score(string peptide, map<int,int> weight_counts, bool cyclic )
+{
+    map<int,int> counts(weight_counts);
+    int score = 0;
+    const vector<int> spectrum = GetSpectrum(peptide, cyclic);
+    vector<int>::const_iterator it;
+    for( it=spectrum.begin(); it != spectrum.end(); ++it )
+    {
+        if( counts.find(*it) != counts.end() )
+        {
+            if( counts[*it] > 0 )
+            {
+                ++score;
+                counts[*it]--;
+            } 
+        }
+    }
+    return score;
+}
+
+int Score2(const vector<int>& peptide, map<int,int> weight_counts, bool cyclic )
+{
+    map<int,int> counts(weight_counts);
+    int score = 0;
+    const vector<int> spectrum = GetSpectrum2(peptide, cyclic);
+    vector<int>::const_iterator it;
+    for( it=spectrum.begin(); it != spectrum.end(); ++it )
+    {
+        if( counts.find(*it) != counts.end() )
+        {
+            if( counts[*it] > 0 )
+            {
+                ++score;
+                counts[*it]--;
+            } 
+        }
+    }
+    return score;
+}
+
+const map<int,int> SpectralConvolution(const vector<int>& spectrum)
+{
+    //const vector<int> spectrum = GetSpectrum2(peptide, false);
+    int length = spectrum.size();
+    cout << "sepctrum size: " << length << endl;
+    map<int,int> counts;
+    for( int i=0; i<length; ++i )
+    {
+        int a = spectrum[i];
+        for( int j = i+1; j < length; ++j )
+        {
+            
+            int b = spectrum[j];
+            int diff = b-a;
+            if (diff == 0 )
+            {
+                continue;
+            }
+            if( diff < 0 )
+            {
+                cout << "Incoming peptide should be sorted" << endl;
+                throw 1;
+            }
+            if( counts.find(diff) != counts.end() )
+            {
+                counts[diff]++;
+            }
+            else
+            {
+                counts[diff] = 1;
+            }
+        }
+    }
+    return counts;
+}
+
+const set<string> Neighbors( string pattern, int d )
+{
+    const char bases[4] = {'A','C','G','T'}; 
+
+    set<string> neighbs;
+    if( d == 0 )
+    {
+        neighbs.insert(pattern);
+        return neighbs;
+    }
+    int pattern_len = pattern.length();
+    if( pattern_len == 1)
+    {
+        neighbs.insert("A");
+        neighbs.insert("C");
+        neighbs.insert("G");
+        neighbs.insert("T");
+        return neighbs;
+    }
+
+    char first = pattern[0];
+    string suffix = pattern.substr(1,pattern_len-1);
+    const set<string> suffixNeighbors = Neighbors( suffix, d );
+    set<string>::const_iterator it;
+    for( it = suffixNeighbors.begin(); it != suffixNeighbors.end(); ++it )
+    {
+        if(HammingDistance(suffix,*it) == d)
+        {
+            neighbs.insert(first + *it);
+        }
+        else
+        {
+            for( int i=0; i<4; ++i )
+            {
+                neighbs.insert( bases[i] + *it );
+            }
+        }
+    }
+    return neighbs;
+}
+
+float Entropy(const vector< vector<float> >& profile)
+{
+    float entropy = 0;
+    vector< vector<float> >::const_iterator it;
+    for( it = profile.begin(); it != profile.end(); ++it )
+    {
+        vector<float> row = *it;
+        vector<float>::iterator it2;
+        for( it2 = row.begin(); it2 != row.end(); ++it2 )
+        {
+            if( *it2 == 0 )
+                continue;
+            entropy += *it2 * log2(*it2);
+        }
+    }
+    return -1*entropy; 
 }

@@ -4,6 +4,7 @@
 #include <string>
 #include <vector>
 #include <set>
+#include <map>
 
 using namespace std;
 
@@ -24,5 +25,24 @@ int BaseToNumber(char b);
 char NumberToBase(int t);
 
 int FillFrequencies(string text, int k, vector<int>& frequencies);
+
+int PopulateSkew(string sequence, int length, vector<int>& skews, bool min);
+
+int HammingDistance(string a, string b);
+
+const vector<int> ApproxMatches(string genome, string pattern, int mismatches);
+
+const vector<int> GetSpectrum(string peptide, bool cyclic);
+const vector<int> GetSpectrum2(const vector<int>& peptide, bool cyclic);
+
+int Score(string peptide, map<int,int> weight_counts, bool cyclic );
+int Score2(const vector<int>& peptide, map<int,int> weight_counts, bool cyclic );
+
+
+const map<int,int> SpectralConvolution(const vector<int>& peptide);
+
+const set<string> Neighbors( string pattern, int d );
+
+float Entropy(const vector< vector<float> >& profile);
 
 #endif
