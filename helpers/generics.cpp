@@ -531,3 +531,87 @@ float Entropy(const vector< vector<float> >& profile)
     }
     return -1*entropy; 
 }
+
+float ProfileProbability(string pattern, const vector< vector<float> >& profile){
+    float prob = 1;
+    for( int col=0; col < pattern.length(); ++col )
+    {
+        int row = BaseToNumber(pattern[col]);
+        prob *= profile[row][col];
+    }
+    return prob;
+}
+
+int MotifScore( const vector<string>& motif )
+{
+    int score = 0;
+    int counts[4];
+    for( int col=0; col < motif[0].length(); ++col )
+    {
+        int max = 0;
+        for(int i=0; i<4; ++i) counts[i] = 0;
+        for(int row=0; row < motif.size(); ++row)
+        {
+            int baseNum = BaseToNumber(motif[row][col]);
+            if( ++counts[baseNum] > max )
+            {
+                max = counts[baseNum];
+            }
+        }
+        score += motif.size() - max;
+    }
+    return score;
+}
+
+string ProfileMostProbable( const vector< vector<float> >& profile, string pattern, int k)
+{
+    float maxProb = -1;
+    string maxKmer;
+    for(int i=0; i<pattern.length()-k+1; ++i )
+    {
+        string kmer = pattern.substr(i,k);
+        float prob = ProfileProbability(kmer, profile);
+        if( prob > maxProb )
+        {
+            maxProb = prob;
+            maxKmer = kmer;
+        }
+    }
+    return maxKmer;
+}
+
+const vector< vector<float> > BuildProfile( vector<string> motif )
+{
+    vector< vector<float> > profile;
+    int len = motif[0].length();
+    vector<float> a(len,0);
+    vector<float> c(len,0);
+    vector<float> g(len,0);
+    vector<float> t(len,0);
+
+    profile.push_back(a);
+    profile.push_back(c);
+    profile.push_back(g);
+    profile.push_back(t);
+
+    vector<string>::iterator row;
+    for( row = motif.begin(); row != motif.end(); ++row )
+    {
+        for( int col=0; col<len; ++col )
+        {
+            char base = (*row)[col];
+            int ix = BaseToNumber(base);
+            ++profile[ix][col];
+        }
+    }
+   
+    int div = motif.size();    
+    for( int row = 0; row < 4; ++row )
+    {
+        for( int col=0; col<len; ++col )
+        {
+            profile[row][col] /= (float) div;
+        }
+    }
+    return profile;
+}

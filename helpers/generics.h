@@ -45,4 +45,12 @@ const set<string> Neighbors( string pattern, int d );
 
 float Entropy(const vector< vector<float> >& profile);
 
+float ProfileProbability(string pattern, const vector< vector<float> >& profile);
+
+int MotifScore( const vector<string>& motif );
+
+string ProfileMostProbable( const vector< vector<float> >& profile, string pattern, int k);
+
+const vector< vector<float> > BuildProfile( vector<string> motif );
+
 #endif
